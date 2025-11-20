@@ -11,6 +11,8 @@ const app = express();
 const CLIENT_URL = process.env.FRONTEND_URL || "http://localhost:5173";
 const SESSION_SECRET = process.env.SESSION_SECRET || "katalyst_session_secret";
 const PORT = process.env.PORT || 5000;
+const NODE_ENV = process.env.NODE_ENV || "development";
+const isProduction = NODE_ENV === "production";
 
 app.set("trust proxy", 1);
 
@@ -26,8 +28,9 @@ app.use(
     name: "session",
     keys: [SESSION_SECRET],
     maxAge: 24 * 60 * 60 * 1000,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    sameSite: isProduction ? "none" : "lax",
+    secure: isProduction,
+    httpOnly: true,
   })
 );
 
