@@ -1,21 +1,40 @@
-import { api } from '../utils/api.util';
-import type { ApiResponse, User } from '../types/api.types';
+import { apiClient, API_BASE_URL } from "./http";
 
-export const authApi = {
-  // Get current user
-  getCurrentUser: async (): Promise<ApiResponse<User>> => {
-    return api.get<User>('/auth/me');
-  },
-
-  // Logout
-  logout: async (): Promise<ApiResponse<void>> => {
-    return api.post('/auth/logout');
-  },
-
-  // Google OAuth login URL
-  getGoogleAuthUrl: (): string => {
-    const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-    return `${API_BASE_URL}/auth/google`;
-  },
+export type GoogleUser = {
+  id: string;
+  email?: string;
+  name?: string;
+  picture?: string;
+  googleId?: string;
 };
 
+type RawCurrentUserResponse = {
+  success: boolean;
+  message?: string;
+  data: GoogleUser | null;
+};
+
+export const getCurrentUser = async (): Promise<RawCurrentUserResponse> => {
+  try {
+    const res = await apiClient.get<RawCurrentUserResponse>("/api/auth/me");
+    return res.data;
+  } catch (error: any) {
+    if (error?.response?.data) {
+      return error.response.data as RawCurrentUserResponse;
+    }
+
+    return {
+      success: false,
+      message: "Unable to fetch current user",
+      data: null,
+    };
+  }
+};
+
+export const logout = async (): Promise<void> => {
+  await apiClient.post("/api/auth/logout");
+};
+
+export const redirectToGoogleLogin = (): void => {
+  window.location.href = `${API_BASE_URL}/api/auth/google`;
+};
