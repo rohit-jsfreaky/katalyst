@@ -61,13 +61,16 @@ export const composioService = {
     // console.log("tool", tool);
 
     // 3. Execute
+    const now = Date.now();
+    const fiveDaysMs = 5 * 24 * 60 * 60 * 1000;
+
     const response = await composio.tools.execute(tool.slug, {
       userId,
       connectedAccountId: existing.id,
       calendarId: "primary",
       arguments: {
-        timeMin: new Date().toISOString(),
-        timeMax: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        timeMin: new Date(now - fiveDaysMs).toISOString(),
+        timeMax: new Date(now + fiveDaysMs).toISOString(),
         singleEvents: true,
         orderBy: "startTime",
         calendarId: "primary",
