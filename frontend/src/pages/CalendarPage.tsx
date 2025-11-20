@@ -8,6 +8,7 @@ import {
   getCurrentUser,
   logout,
   redirectToGoogleLogin,
+  persistAuthToken,
   type GoogleUser,
 } from "../api/auth.api";
 import LandingPage from "../components/LandingPage";
@@ -118,6 +119,12 @@ const CalendarPage: React.FC = () => {
   useEffect(() => {
     const restoreSession = async () => {
       const params = new URLSearchParams(window.location.search);
+      const token = params.get("token");
+      if (token) {
+        persistAuthToken(token);
+        params.delete("token");
+      }
+
       const authStatus = params.get("auth");
       if (authStatus) {
         if (authStatus === "failed") {
@@ -125,6 +132,12 @@ const CalendarPage: React.FC = () => {
         }
 
         params.delete("auth");
+        const newQuery = params.toString();
+        const nextUrl = `${window.location.pathname}${
+          newQuery ? `?${newQuery}` : ""
+        }${window.location.hash}`;
+        window.history.replaceState({}, "", nextUrl);
+      } else if (token) {
         const newQuery = params.toString();
         const nextUrl = `${window.location.pathname}${
           newQuery ? `?${newQuery}` : ""

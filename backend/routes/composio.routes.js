@@ -4,8 +4,11 @@ import {
   checkConnection,
   fetchEvents
 } from "../controllers/composio.controller.js";
+import { authenticate } from "../middlewares/auth.middleware.js";
 
 const composioRoutes = Router();
+
+composioRoutes.use(authenticate);
 
 composioRoutes.get("/status/:userId", checkConnection);
 composioRoutes.get("/connect/:userId", startConnection);

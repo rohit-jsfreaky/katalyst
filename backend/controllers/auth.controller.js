@@ -1,4 +1,21 @@
+import jwt from "jsonwebtoken";
+
 const getFrontendOrigin = () => process.env.FRONTEND_URL || "http://localhost:5173";
+const JWT_SECRET = process.env.JWT_SECRET || "katalyst_jwt_secret";
+const TOKEN_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "1d";
+
+const createJwt = (user) =>
+  jwt.sign(
+    {
+      sub: user.id,
+      email: user.email,
+      name: user.name,
+      picture: user.picture,
+      googleId: user.googleId || user.id,
+    },
+    JWT_SECRET,
+    { expiresIn: TOKEN_EXPIRES_IN }
+  );
 
 export const googleCallbackHandler = (req, res) => {
   const targetOrigin = getFrontendOrigin();
@@ -11,6 +28,7 @@ export const googleCallbackHandler = (req, res) => {
 
   const successUrl = new URL(targetOrigin);
   successUrl.searchParams.set("auth", "success");
+  successUrl.searchParams.set("token", createJwt(req.user));
   return res.redirect(successUrl.toString());
 };
 
@@ -22,7 +40,7 @@ export const googleFailureHandler = (_req, res) => {
 };
 
 export const getCurrentUser = (req, res) => {
-  if (!req.user) {
+  if (!req.authUser) {
     return res.status(401).json({
       success: false,
       message: "Not authenticated",
@@ -30,29 +48,11 @@ export const getCurrentUser = (req, res) => {
     });
   }
 
-  const userPayload = {
-    ...req.user,
-    googleId: req.user.googleId || req.user.id,
-  };
-
   return res.json({
     success: true,
     message: "User retrieved successfully",
-    data: userPayload,
+    data: req.authUser,
   });
 };
 
-export const logoutUser = (req, res, next) => {
-  if (typeof req.logout === "function") {
-    req.logout((err) => {
-      if (err) {
-        return next(err);
-      }
-      req.session = null;
-      return res.json({ success: true });
-    });
-  } else {
-    req.session = null;
-    return res.json({ success: true });
-  }
-};
+export const logoutUser = (_req, res) => res.json({ success: true });
