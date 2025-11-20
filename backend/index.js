@@ -28,9 +28,10 @@ app.use(
     name: "session",
     keys: [SESSION_SECRET],
     maxAge: 24 * 60 * 60 * 1000,
-    sameSite: isProduction ? "none" : "lax",
-    secure: isProduction,
+    sameSite: "none",
+    secure: true,
     httpOnly: true,
+    proxy: true  
   })
 );
 
