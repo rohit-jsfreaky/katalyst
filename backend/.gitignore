@@ -1,8 +1,34 @@
+# Node modules
 node_modules/
-dist/
-.env
-.env.local
-.env.*.local
-*.log
-.DS_Store
 
+# Environment variables
+.env
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build outputs (if using TypeScript or bundlers)
+dist/
+build/
+
+# Temporary files
+.tmp/
+temp/
+
+# Cache
+.cache/
+.nyc_output/
+coverage/
+
+# PM2 logs
+.pids
+*.pid
+*.seed
