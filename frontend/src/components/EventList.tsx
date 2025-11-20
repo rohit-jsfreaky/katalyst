@@ -235,7 +235,7 @@ const EventList: React.FC<EventListProps> = ({
               )}
 
               {event.htmlLink && (
-                <div className="mt-4 flex justify-end opacity-0 transition-opacity group-hover:opacity-100">
+                <div className="mt-4 flex justify-end opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
                   <a
                     href={event.htmlLink}
                     target="_blank"
