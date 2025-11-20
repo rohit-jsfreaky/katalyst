@@ -3,6 +3,7 @@ import {
   checkCalendarStatus,
   connectCalendar,
   getCalendarEvents,
+  getCalendarSummary,
 } from "../api/composio.api";
 import {
   getCurrentUser,
@@ -12,7 +13,7 @@ import {
   type GoogleUser,
 } from "../api/auth.api";
 import LandingPage from "../components/LandingPage";
-import Dashboard from "../components/Dashboard";
+import Dashboard, { type MeetingSummary } from "../components/Dashboard";
 
 type CalendarBuckets = {
   upcoming: any[];
@@ -71,6 +72,34 @@ const bucketEvents = (payload: any): CalendarBuckets => {
   return bucketed;
 };
 
+const normalizeString = (value: unknown, fallback = "") => {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed || fallback;
+  }
+
+  if (value == null) {
+    return fallback;
+  }
+
+  if (typeof value === "number" || typeof value === "boolean") {
+    const converted = String(value).trim();
+    return converted || fallback;
+  }
+
+  return fallback;
+};
+
+const normalizeStringArray = (value: unknown): string[] => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((item) => normalizeString(item))
+    .filter((item) => Boolean(item));
+};
+
 const CalendarPage: React.FC = () => {
   const [user, setUser] = useState<GoogleUser | null>(null);
   const [status, setStatus] = useState<any>(null);
@@ -81,8 +110,58 @@ const CalendarPage: React.FC = () => {
   const [authMessage, setAuthMessage] = useState<string | null>(null);
   const [statusError, setStatusError] = useState<string | null>(null);
   const [connecting, setConnecting] = useState(false);
+  const [summary, setSummary] = useState<MeetingSummary | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
 
   const userId = useMemo(() => user?.googleId || user?.id || null, [user]);
+
+  const loadSummary = useCallback(async () => {
+    if (!userId) {
+      return;
+    }
+
+    setSummaryLoading(true);
+    setSummaryError(null);
+
+    try {
+      const response = await getCalendarSummary(userId);
+      if (response && typeof response === "object" && response.summary) {
+        const summaryPayload = response.summary;
+        const insights = normalizeStringArray(summaryPayload?.insights);
+        const meetings = Array.isArray(summaryPayload?.meetings)
+          ? summaryPayload.meetings.map((meeting: any) => ({
+              title: normalizeString(meeting?.title, "Untitled event"),
+              date: normalizeString(meeting?.date),
+              attendees: normalizeStringArray(meeting?.attendees),
+              keyDecisions: normalizeStringArray(meeting?.keyDecisions),
+              nextSteps: normalizeStringArray(meeting?.nextSteps),
+            }))
+          : [];
+
+        const normalized: MeetingSummary = {
+          insights,
+          meetings,
+        };
+
+        setSummary(
+          normalized.insights.length > 0 || normalized.meetings.length > 0
+            ? normalized
+            : null
+        );
+      } else {
+        setSummary(null);
+      }
+    } catch (error) {
+      console.error("Failed to generate AI summary", error);
+      setSummary(null);
+      setSummaryError(
+        "We couldn't generate a meeting summary right now. Please try again later."
+      );
+    } finally {
+      setSummaryLoading(false);
+    }
+  }, [userId]);
 
   const refreshStatusAndEvents = useCallback(async () => {
     if (!userId) {
@@ -99,9 +178,21 @@ const CalendarPage: React.FC = () => {
 
       if (statusResponse?.connected) {
         const eventsResponse = await getCalendarEvents(userId);
-        setEvents(bucketEvents(eventsResponse));
+        const bucketed = bucketEvents(eventsResponse);
+        setEvents(bucketed);
+
+        if (bucketed.past.length > 0) {
+          await loadSummary();
+        } else {
+          setSummary(null);
+          setSummaryError(null);
+          setSummaryLoading(false);
+        }
       } else {
         setEvents(INITIAL_EVENTS);
+        setSummary(null);
+        setSummaryError(null);
+        setSummaryLoading(false);
       }
     } catch (error) {
       console.error("Failed to load calendar data", error);
@@ -110,11 +201,32 @@ const CalendarPage: React.FC = () => {
       setStatusError(
         "We couldn't reach your calendar right now. Please try again in a moment."
       );
+      setSummary(null);
+      setSummaryError(
+        "We couldn't reach your events to create a summary. Please retry soon."
+      );
+      setSummaryLoading(false);
     } finally {
       setStatusLoading(false);
       setEventsLoading(false);
     }
-  }, [userId]);
+  }, [userId, loadSummary]);
+
+  const handleRefreshSummary = useCallback(() => {
+    if (!userId) {
+      return;
+    }
+
+    if (events.past.length === 0) {
+      setSummary(null);
+      setSummaryError("We need at least one past meeting to summarize.");
+      setSummaryLoading(false);
+      return;
+    }
+
+    setSummaryError(null);
+    void loadSummary();
+  }, [userId, events, loadSummary]);
 
   useEffect(() => {
     const restoreSession = async () => {
@@ -167,6 +279,9 @@ const CalendarPage: React.FC = () => {
     if (!userId) {
       setStatus(null);
       setEvents(INITIAL_EVENTS);
+      setSummary(null);
+      setSummaryError(null);
+      setSummaryLoading(false);
       return;
     }
 
@@ -190,6 +305,9 @@ const CalendarPage: React.FC = () => {
       setStatus(null);
       setEvents(INITIAL_EVENTS);
       setAuthMessage(null);
+      setSummary(null);
+      setSummaryError(null);
+      setSummaryLoading(false);
     }
   };
 
@@ -249,6 +367,10 @@ const CalendarPage: React.FC = () => {
       onConnect={handleConnect}
       onLogout={handleLogout}
       onDismissAuthMessage={() => setAuthMessage(null)}
+      summary={summary}
+      summaryLoading={summaryLoading}
+      summaryError={summaryError}
+      onRefreshSummary={handleRefreshSummary}
     />
   );
 };

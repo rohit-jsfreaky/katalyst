@@ -23,3 +23,16 @@ export const getCalendarEvents = async (userId: string) => {
   const res = await apiClient.get(`/api/calendar/events/${userId}`);
   return res.data;
 };
+
+// --------------------
+//  GET AI SUMMARY
+// --------------------
+export const getCalendarSummary = async (
+  userId: string,
+  params?: { limit?: number; lookbackDays?: number }
+) => {
+  const res = await apiClient.get(`/api/calendar/summary/${userId}`, {
+    params,
+  });
+  return res.data;
+};

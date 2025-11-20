@@ -2,7 +2,8 @@ import { Router } from "express";
 import {
   startConnection,
   checkConnection,
-  fetchEvents
+  fetchEvents,
+  summarizeMeetings,
 } from "../controllers/composio.controller.js";
 import { authenticate } from "../middlewares/auth.middleware.js";
 
@@ -13,5 +14,6 @@ composioRoutes.use(authenticate);
 composioRoutes.get("/status/:userId", checkConnection);
 composioRoutes.get("/connect/:userId", startConnection);
 composioRoutes.get("/events/:userId", fetchEvents);
+composioRoutes.get("/summary/:userId", summarizeMeetings);
 
 export default composioRoutes;

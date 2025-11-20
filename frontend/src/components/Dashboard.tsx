@@ -2,6 +2,17 @@ import React from "react";
 import EventList from "./EventList";
 import { GoogleUser } from "../api/auth.api";
 
+export interface MeetingSummary {
+  insights: string[];
+  meetings: Array<{
+    title: string;
+    date: string;
+    attendees: string[];
+    keyDecisions: string[];
+    nextSteps: string[];
+  }>;
+}
+
 interface DashboardProps {
   user: GoogleUser;
   status: any;
@@ -16,6 +27,10 @@ interface DashboardProps {
   onConnect: () => void;
   onLogout: () => void;
   onDismissAuthMessage: () => void;
+  summary: MeetingSummary | null;
+  summaryLoading: boolean;
+  summaryError: string | null;
+  onRefreshSummary: () => void;
 }
 
 const Dashboard: React.FC<DashboardProps> = ({
@@ -29,7 +44,16 @@ const Dashboard: React.FC<DashboardProps> = ({
   onConnect,
   onLogout,
   onDismissAuthMessage,
+  summary,
+  summaryLoading,
+  summaryError,
+  onRefreshSummary,
 }) => {
+  const hasPastEvents = events.past.length > 0;
+  const summaryInsights = summary?.insights ?? [];
+  const summaryMeetings = summary?.meetings ?? [];
+  const hasSummaryContent = summaryInsights.length > 0 || summaryMeetings.length > 0;
+
   return (
     <div className="min-h-screen bg-slate-950 text-white selection:bg-indigo-500 selection:text-white font-sans relative">
       {/* Background Gradients */}
@@ -153,6 +177,138 @@ const Dashboard: React.FC<DashboardProps> = ({
                 </div>
                 <p className="text-sm font-medium text-slate-400">Past Trips</p>
                 <p className="text-2xl font-bold text-white">{events.past.length}</p>
+              </div>
+            </div>
+
+            <div className="overflow-hidden rounded-3xl bg-white/5 shadow-2xl ring-1 ring-white/10 backdrop-blur-xl">
+              <div className="p-6 space-y-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-500/20 text-purple-300 ring-1 ring-purple-500/30">
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-bold text-white">AI Meeting Highlights</h2>
+                      <p className="text-xs text-slate-400">Summaries update from your past events.</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={onRefreshSummary}
+                    disabled={summaryLoading || !hasPastEvents}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-white/5 px-3 py-1 text-xs font-semibold text-slate-300 transition-colors hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {summaryLoading ? (
+                      <>
+                        <span className="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                        Updating
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        Refresh
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {summaryError && (
+                  <div className="rounded-lg bg-rose-500/10 p-3 text-xs text-rose-300 ring-1 ring-rose-500/20">
+                    {summaryError}
+                  </div>
+                )}
+
+                {!summaryError && summaryLoading && (
+                  <div className="flex items-center gap-2 text-sm text-slate-300">
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    Drafting your recap...
+                  </div>
+                )}
+
+                {!summaryLoading && !summaryError && hasSummaryContent && (
+                  <div className="space-y-4">
+                    {summaryInsights.length > 0 && (
+                      <div>
+                        <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-2">
+                          Highlights
+                        </h3>
+                        <ul className="list-disc space-y-1 pl-5 text-sm text-slate-300 marker:text-purple-300">
+                          {summaryInsights.map((item, index) => (
+                            <li key={`summary-insight-${index}`}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {summaryMeetings.length > 0 && (
+                      <div className="space-y-3">
+                        <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                          Recent Meetings
+                        </h3>
+                        <div className="space-y-3">
+                          {summaryMeetings.map((meeting, index) => (
+                            <div
+                              key={`meeting-summary-${index}`}
+                              className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-slate-300"
+                            >
+                              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                                <p className="font-semibold text-white">{meeting.title}</p>
+                                {meeting.date && (
+                                  <span className="text-xs font-medium text-slate-400">
+                                    {meeting.date}
+                                  </span>
+                                )}
+                              </div>
+
+                              {meeting.attendees.length > 0 && (
+                                <p className="mt-2 text-xs text-slate-400">
+                                  Attendees: {meeting.attendees.join(", ")}
+                                </p>
+                              )}
+
+                              {meeting.keyDecisions.length > 0 && (
+                                <div className="mt-3">
+                                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-1">
+                                    Key Decisions
+                                  </p>
+                                  <ul className="list-disc space-y-1 pl-5 text-xs text-slate-300 marker:text-purple-300">
+                                    {meeting.keyDecisions.map((decision, decisionIndex) => (
+                                      <li key={`meeting-${index}-decision-${decisionIndex}`}>{decision}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+
+                              {meeting.nextSteps.length > 0 && (
+                                <div className="mt-3">
+                                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-1">
+                                    Next Steps
+                                  </p>
+                                  <ul className="list-disc space-y-1 pl-5 text-xs text-slate-300 marker:text-purple-300">
+                                    {meeting.nextSteps.map((step, stepIndex) => (
+                                      <li key={`meeting-${index}-next-${stepIndex}`}>{step}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {!summaryLoading && !summaryError && !hasSummaryContent && (
+                  <p className="text-sm text-slate-400">
+                    {hasPastEvents
+                      ? "Tap refresh to create a smart summary of your recent meetings."
+                      : "Once you have past meetings on your calendar, we will craft highlights here."}
+                  </p>
+                )}
               </div>
             </div>
           </div>

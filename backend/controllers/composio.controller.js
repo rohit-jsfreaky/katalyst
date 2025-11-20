@@ -51,3 +51,35 @@ export const fetchEvents = async (req, res) => {
     return res.status(500).json({ error: err.message });
   }
 };
+
+export const summarizeMeetings = async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    if (!ensureSameUser(req, res, userId)) {
+      return;
+    }
+
+    const options = {};
+    const limitParam = req.query.limit;
+    const lookbackParam = req.query.lookbackDays;
+
+    if (typeof limitParam === "string") {
+      const parsedLimit = Number.parseInt(limitParam, 10);
+      if (!Number.isNaN(parsedLimit) && parsedLimit > 0) {
+        options.limit = Math.min(parsedLimit, 10);
+      }
+    }
+
+    if (typeof lookbackParam === "string") {
+      const parsedLookback = Number.parseInt(lookbackParam, 10);
+      if (!Number.isNaN(parsedLookback) && parsedLookback > 0) {
+        options.lookbackDays = Math.min(parsedLookback, 90);
+      }
+    }
+
+    const summary = await composioService.generateMeetingSummary(userId, options);
+    return res.json(summary);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+};
